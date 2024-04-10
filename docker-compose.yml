@@ -1,0 +1,66 @@
+version: "3.8"
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+volumes:
+  db_data:
+    
+services:
+  api:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+    env_file:
+      - .env
+    tty: true
+    restart: always
+    hostname: "api"
+    networks:
+      - frontend
+      - backend
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "10"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/healthz"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+      
+  db:
+    image: postgres:latest
+    tty: true
+    restart: always
+    hostname: "db"
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASS:-postgres}
+      - POSTGRES_DB=${DB_NAME:-postgres}
+    ports:
+      - "5435:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - frontend
+      - backend
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "10"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "${DB_NAME}"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
